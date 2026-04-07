@@ -12,6 +12,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from livekit.agents import AgentSession, JobContext, WorkerOptions, cli
 from livekit.plugins import openai, silero
+from openai.types.beta.realtime.session import InputAudioTranscription
 
 from agent.tutor import HankTutor
 
@@ -33,19 +34,23 @@ if _missing:
 
 
 def prewarm_fnc(proc):
-    proc.userdata.vad = silero.VAD.load()
+    proc.userdata["vad"] = silero.VAD.load()
 
 
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
 
-    vad = getattr(ctx.proc.userdata, "vad", None) or silero.VAD.load()
+    vad = ctx.proc.userdata.get("vad") or silero.VAD.load()
 
     session = AgentSession(
         vad=vad,
         llm=openai.realtime.RealtimeModel(
             voice="ash",
             temperature=0.7,
+            input_audio_transcription=InputAudioTranscription(
+                model="gpt-4o-transcribe",
+                language="en",
+            ),
         ),
     )
 
@@ -55,7 +60,11 @@ async def entrypoint(ctx: JobContext):
     )
 
     await session.generate_reply(
-        instructions="Follow your system prompt greeting."
+        instructions=(
+            "Respond in English only. Greet the user briefly as Hank in English: "
+            "say hey, introduce yourself, ask what they're fixing today. "
+            "Two sentences maximum. English only."
+        )
     )
 
 
