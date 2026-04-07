@@ -55,7 +55,7 @@ async def entrypoint(ctx: JobContext):
     )
 
     await session.generate_reply(
-        instructions="Greet the user as Hank would: brief, warm, ask what they're fixing today."
+        instructions="Follow your system prompt greeting."
     )
 
 

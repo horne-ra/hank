@@ -1,13 +1,17 @@
 ---
-description: Never push directly to main — use feature branches and PRs only.
+description: Never push directly to protected branches — use feature branches and PRs only.
 alwaysApply: true
 ---
 
-# Git — do not push to `main`
+# Git — do not push to protected branches
 
-- **Never** run `git push` (or equivalent) targeting **`main`** as the remote branch. Do not `git push origin main`, do not force-push to `main`, and do not set upstream so that the default push goes to `main` for unmerged work.
+- **Never** run `git push` (or equivalent) targeting a **protected branch** (`main`, `master`, `develop`, `release/*`, `production`) as the remote branch. Do not `git push origin main`, do not force-push to any protected branch, and do not set upstream so that the default push goes to a protected branch for unmerged work.
 - **Always** work on a **feature branch** (e.g. `feat/TICKET-description`, `fix/...`), push that branch to `origin`, and merge via **pull request** (or the repo’s required workflow).
 - When suggesting or running git commands, prefer: `git checkout -b <branch>`, `git push -u origin <branch>`, then open or update a PR into `main`.
-- If the user asks to “push to main” or deploy from `main` without a PR, **refuse the direct push** and offer: push the feature branch + merge via PR (or explain they must merge in GitHub/GitLab UI if they have permissions).
+- If the user asks to push directly to a protected branch without a PR, **refuse the direct push** and offer: push the feature branch + merge via PR (or explain they must merge in GitHub/GitLab UI if they have permissions).
 
-This matches typical protected-branch policies; treat `main` as read-only from local pushes unless the user explicitly confirms an emergency override **and** repository policy allows it.
+This matches typical protected-branch policies; treat protected branches as read-only from local pushes. A direct push override is permitted **only** when all of the following are met:
+
+1. **Production incident** requiring an immediate hotfix that cannot wait for the normal PR cycle.
+2. **Explicit signed approval** from the repository owner or designated on-call engineer.
+3. **Documented audit trail**: record who approved, the reason, and a timestamp in the repository’s incident or approval log (e.g., an issue comment or incident channel entry) before pushing.
