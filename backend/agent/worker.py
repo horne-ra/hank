@@ -10,8 +10,10 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from livekit.agents import Agent, AgentSession, JobContext, WorkerOptions, cli
+from livekit.agents import AgentSession, JobContext, WorkerOptions, cli
 from livekit.plugins import openai, silero
+
+from agent.tutor import HankTutor
 
 # Load .env from project root (one level up from backend/)
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
@@ -49,17 +51,11 @@ async def entrypoint(ctx: JobContext):
 
     await session.start(
         room=ctx.room,
-        agent=Agent(
-            instructions=(
-                "You are a helpful voice assistant. Keep responses short and "
-                "conversational. This is a Phase 1 placeholder — Hank's real "
-                "personality comes in Phase 2."
-            ),
-        ),
+        agent=HankTutor(),
     )
 
     await session.generate_reply(
-        instructions="Greet the user briefly and ask how you can help."
+        instructions="Follow your system prompt greeting."
     )
 
 
