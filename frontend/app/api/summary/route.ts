@@ -22,9 +22,10 @@ export async function GET(request: NextRequest) {
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
+      console.error(`Summary proxy error [${res.status}]:`, text);
       const status = res.status >= 400 && res.status < 600 ? res.status : 502;
       return NextResponse.json(
-        { error: `Backend returned ${res.status}`, detail: text },
+        { error: `Backend returned ${res.status}` },
         { status }
       );
     }

@@ -56,7 +56,14 @@ export function SummaryPanel({ sessionId, onNewSession }: Props) {
 
         if (res.ok) {
           const data: unknown = await res.json();
-          if (!cancelled) setSummary(parseSummary(data));
+          if (cancelled) return;
+          try {
+            setSummary(parseSummary(data));
+          } catch (parseErr) {
+            setError(
+              parseErr instanceof Error ? parseErr.message : "Invalid summary data"
+            );
+          }
           return;
         }
 
@@ -142,9 +149,9 @@ export function SummaryPanel({ sessionId, onNewSession }: Props) {
             {"Next time, let's tackle"}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {summary.suggested_next_lessons.map((lesson) => (
+            {summary.suggested_next_lessons.map((lesson, idx) => (
               <button
-                key={lesson}
+                key={`${lesson}-${idx}`}
                 onClick={() => onNewSession(lesson)}
                 className="text-left p-4 bg-[#171717] border border-[#262626] rounded-lg text-sm text-neutral-300 hover:border-amber-500 transition-colors"
               >
