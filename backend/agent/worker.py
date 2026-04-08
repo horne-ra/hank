@@ -6,6 +6,7 @@ Run in console mode for terminal testing:
 Run in dev mode to connect to LiveKit Cloud (used by frontend):
     cd backend && uv run python -m agent.worker dev
 """
+import logging
 import os
 from pathlib import Path
 
@@ -69,7 +70,7 @@ async def entrypoint(ctx: JobContext):
                     }
                 )
         except Exception:
-            pass
+            logging.exception("Failed to collect session history")
         await finalize_session(session_id, history)
 
     ctx.add_shutdown_callback(on_shutdown)

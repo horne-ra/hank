@@ -14,6 +14,14 @@ from agent.session_store import get_summary, init_db
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
+_REQUIRED_ENV_VARS = ["LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"]
+_missing = [v for v in _REQUIRED_ENV_VARS if not os.environ.get(v)]
+if _missing:
+    raise RuntimeError(
+        f"Missing required environment variable(s): {', '.join(_missing)}. "
+        "Set them in the project-root .env file or export them in your shell."
+    )
+
 app = FastAPI(title="Hank Token Server")
 
 app.add_middleware(
