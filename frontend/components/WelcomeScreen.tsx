@@ -45,6 +45,7 @@ export function WelcomeScreen({ onStart, isConnecting, error }: Props) {
         <button
           type="button"
           disabled={isConnecting}
+          aria-busy={isConnecting}
           onClick={() => onStart()}
           className="w-full bg-[#f59e0b] text-[#0a0a0a] font-bold py-4 px-8 rounded-lg flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(245,158,11,0.2)] active:scale-[0.98] transition-transform mb-8 disabled:opacity-70 disabled:active:scale-100"
         >

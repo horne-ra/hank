@@ -8,8 +8,6 @@ import { WelcomeScreen } from "@/components/WelcomeScreen";
 type Connection = {
   token: string;
   serverUrl: string;
-  roomName: string;
-  sessionId: number;
 };
 
 type TokenResponse = {
@@ -85,8 +83,6 @@ export default function Home() {
       setConnection({
         token: data.token,
         serverUrl: data.url,
-        roomName: data.room_name,
-        sessionId: data.session_id,
       });
       setView("active");
     } catch (err) {

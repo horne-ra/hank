@@ -59,8 +59,12 @@ export function SessionView({ onEnd, initialMessage }: Props) {
     void localParticipant.setMicrophoneEnabled(!micOn);
   }
 
-  function handleEndCall() {
-    void room.disconnect();
+  async function handleEndCall() {
+    try {
+      await room.disconnect();
+    } catch (err) {
+      console.error("Failed to disconnect:", err);
+    }
     onEnd();
   }
 
