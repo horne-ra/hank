@@ -118,16 +118,14 @@ cleanup() {
   echo ""
   echo "Stopping services..."
   for pid in "${PIDS[@]}"; do
-    if kill -0 "$pid" 2>/dev/null; then
-      kill "$pid" 2>/dev/null || true
-    fi
+    # Kill the entire process group (negative PID) so child processes
+    # spawned by the subshell (uvicorn, agent worker, pnpm) are included.
+    kill -- -"$pid" 2>/dev/null || true
   done
   # Give them a moment to exit cleanly
   sleep 1
   for pid in "${PIDS[@]}"; do
-    if kill -0 "$pid" 2>/dev/null; then
-      kill -9 "$pid" 2>/dev/null || true
-    fi
+    kill -9 -- -"$pid" 2>/dev/null || true
   done
   exit 0
 }
@@ -141,8 +139,18 @@ trap cleanup EXIT INT TERM
 ) &
 PIDS+=($!)
 
-# Wait briefly for token server to come up
-sleep 2
+# Wait for token server to be ready
+echo "Waiting for token server..."
+for i in $(seq 1 20); do
+  if curl -sf http://localhost:8000/healthz >/dev/null 2>&1; then
+    echo "Token server ready."
+    break
+  fi
+  if [ "$i" -eq 20 ]; then
+    echo "WARNING: Token server not responding after 20s, starting agent anyway."
+  fi
+  sleep 1
+done
 
 # Start agent worker with prefixed output
 (

@@ -1,7 +1,7 @@
 FROM node:20-alpine AS deps
 WORKDIR /app
 RUN corepack enable pnpm
-COPY package.json pnpm-lock.yaml* ./
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM node:20-alpine AS builder
@@ -9,10 +9,6 @@ WORKDIR /app
 RUN corepack enable pnpm
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-
-# NEXT_PUBLIC_* must be baked in at build time, not runtime
-ARG NEXT_PUBLIC_BACKEND_URL=http://localhost:8000
-ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 
 RUN pnpm build
 
@@ -23,6 +19,9 @@ ENV NODE_ENV=production
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+RUN chown -R node:node /app
+USER node
 
 EXPOSE 3000
 ENV PORT=3000
