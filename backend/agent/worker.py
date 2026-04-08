@@ -6,6 +6,7 @@ Run in console mode for terminal testing:
 Run in dev mode to connect to LiveKit Cloud (used by frontend):
     cd backend && uv run python -m agent.worker dev
 """
+import logging
 import os
 from pathlib import Path
 
@@ -14,6 +15,12 @@ from livekit.agents import AgentSession, JobContext, WorkerOptions, cli
 from livekit.plugins import openai, silero
 from openai.types.beta.realtime.session import InputAudioTranscription
 
+from agent.session_store import (
+    create_session,
+    finalize_session,
+    get_session_by_room,
+    init_db,
+)
 from agent.tutor import HankTutor
 
 # Load .env from project root (one level up from backend/)
@@ -40,6 +47,9 @@ def prewarm_fnc(proc):
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
 
+    init_db()
+    session_id = get_session_by_room(ctx.room.name) or create_session(ctx.room.name)
+
     vad = ctx.proc.userdata.get("vad") or silero.VAD.load()
 
     session = AgentSession(
@@ -53,6 +63,22 @@ async def entrypoint(ctx: JobContext):
             ),
         ),
     )
+
+    async def on_shutdown() -> None:
+        history: list[dict] = []
+        try:
+            for msg in session.history.messages():
+                history.append(
+                    {
+                        "role": str(msg.role),
+                        "content": msg.text_content or "",
+                    }
+                )
+        except Exception:
+            logging.exception("Failed to collect session history")
+        await finalize_session(session_id, history)
+
+    ctx.add_shutdown_callback(on_shutdown)
 
     await session.start(
         room=ctx.room,
