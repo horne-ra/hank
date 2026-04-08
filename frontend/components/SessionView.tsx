@@ -28,21 +28,26 @@ export function SessionView({ initialMessage }: Props) {
   const history = useTranscriptHistory();
 
   const preseedDone = useRef(false);
+  const [preseedRetry, setPreseedRetry] = useState(0);
+  const preseedInFlight = useRef(false);
   useEffect(() => {
     if (!initialMessage || connectionState !== ConnectionState.Connected) return;
-    if (preseedDone.current) return;
-    // TODO: agent-side handling for pre-seeded messages
+    if (preseedDone.current || preseedInFlight.current) return;
     const payload = JSON.stringify({
       type: "user_message",
       text: initialMessage,
     });
-    preseedDone.current = true;
+    preseedInFlight.current = true;
     room.localParticipant
       .publishData(new TextEncoder().encode(payload), { reliable: true })
+      .then(() => {
+        preseedDone.current = true;
+      })
       .catch(() => {
-        preseedDone.current = false;
+        preseedInFlight.current = false;
+        setPreseedRetry((n) => n + 1);
       });
-  }, [connectionState, initialMessage, room]);
+  }, [connectionState, initialMessage, room, preseedRetry]);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("HANK");
 
