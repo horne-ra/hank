@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { TutorRoom } from "@/components/TutorRoom";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
+import { SummaryPanel } from "@/components/SummaryPanel";
 
 type Connection = {
   token: string;
@@ -33,8 +34,11 @@ function isTokenResponse(data: unknown): data is TokenResponse {
 }
 
 export default function Home() {
-  const [view, setView] = useState<"welcome" | "active">("welcome");
+  const [view, setView] = useState<"welcome" | "active" | "summary">(
+    "welcome"
+  );
   const [connection, setConnection] = useState<Connection | null>(null);
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialMessage, setInitialMessage] = useState<string | undefined>(
@@ -43,7 +47,7 @@ export default function Home() {
 
   const connectingRef = useRef(false);
 
-  async function onStart(seed?: string) {
+  async function handleStart(seed?: string) {
     if (connectingRef.current) return;
     connectingRef.current = true;
     setIsConnecting(true);
@@ -80,6 +84,7 @@ export default function Home() {
       }
 
       setInitialMessage(seed);
+      setSessionId(data.session_id);
       setConnection({
         token: data.token,
         serverUrl: data.url,
@@ -93,23 +98,35 @@ export default function Home() {
     }
   }
 
-  function onEnd() {
+  function handleSessionEnd() {
     setConnection(null);
     setInitialMessage(undefined);
+    setView("summary");
+  }
+
+  function handleNewSession(initialMessageArg?: string) {
+    setConnection(null);
+    setSessionId(null);
+    setError(null);
+    setInitialMessage(undefined);
     setView("welcome");
+    if (initialMessageArg !== undefined) {
+      void handleStart(initialMessageArg);
+    }
   }
 
   return (
     <div className="h-dvh flex flex-col bg-[#0a0a0a] overflow-hidden">
       <AnimatePresence mode="wait">
-        {view === "welcome" ? (
+        {view === "welcome" && (
           <WelcomeScreen
             key="welcome"
-            onStart={onStart}
+            onStart={handleStart}
             isConnecting={isConnecting}
             error={error}
           />
-        ) : connection ? (
+        )}
+        {view === "active" && connection && (
           <motion.div
             key="active"
             initial={{ opacity: 0 }}
@@ -121,10 +138,24 @@ export default function Home() {
               token={connection.token}
               serverUrl={connection.serverUrl}
               initialMessage={initialMessage}
-              onEnd={onEnd}
+              onEnd={handleSessionEnd}
             />
           </motion.div>
-        ) : null}
+        )}
+        {view === "summary" && sessionId !== null && (
+          <motion.div
+            key="summary"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col min-h-0 h-full w-full overflow-y-auto"
+          >
+            <SummaryPanel
+              sessionId={sessionId}
+              onNewSession={handleNewSession}
+            />
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
