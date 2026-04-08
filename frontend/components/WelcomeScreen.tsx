@@ -11,6 +11,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { HankLogo } from "./HankLogo";
+import { ErrorBanner } from "./ErrorBanner";
 
 const SUGGESTIONS = [
   { id: "1", text: "My toilet keeps running", icon: <Droplets className="w-4 h-4" /> },
@@ -30,6 +31,7 @@ type Props = {
   onStart: (initialMessage?: string) => void;
   onViewSession: (sessionId: number) => void;
   onResumeSession: (sessionId: number) => void;
+  onClearError?: () => void;
   isConnecting: boolean;
   error: string | null;
 };
@@ -54,6 +56,7 @@ export function WelcomeScreen({
   onStart,
   onViewSession,
   onResumeSession,
+  onClearError,
   isConnecting,
   error,
 }: Props) {
@@ -103,6 +106,15 @@ export function WelcomeScreen({
           Hank&apos;s been fixing houses for forty years. Tell him what&apos;s going on.
         </p>
 
+        {error ? (
+          <div className="w-full max-w-md mb-6">
+            <ErrorBanner
+              message={error}
+              onRetry={onClearError}
+            />
+          </div>
+        ) : null}
+
         <button
           type="button"
           disabled={isConnecting}
@@ -115,12 +127,6 @@ export function WelcomeScreen({
             {isConnecting ? "Connecting..." : "Start talking to Hank"}
           </span>
         </button>
-
-        {error ? (
-          <p className="text-red-400 text-sm text-center max-w-[280px] mb-4" role="alert">
-            {error}
-          </p>
-        ) : null}
 
         <div className="flex items-center gap-4 w-full mb-8">
           <div className="h-[1px] flex-1 bg-[#262626]" />

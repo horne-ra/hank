@@ -97,7 +97,20 @@ export default function Home() {
       setViewingSessionId(null);
       setView("active");
     } catch (err) {
-      setConnectionError(String(err));
+      let message = "Couldn't reach Hank. Check your connection and try again.";
+      if (err instanceof Error) {
+        if (err.message.includes("502") || err.message.includes("503")) {
+          message = "Hank's offline right now. Try again in a moment.";
+        } else if (err.message.includes("400") || err.message.includes("422")) {
+          message = "Couldn't start a session. Please refresh and try again.";
+        } else if (
+          err.message.toLowerCase().includes("network") ||
+          err.message.toLowerCase().includes("fetch")
+        ) {
+          message = "Couldn't reach Hank. Check your connection and try again.";
+        }
+      }
+      setConnectionError(message);
     } finally {
       connectingRef.current = false;
       setIsConnecting(false);
@@ -107,6 +120,17 @@ export default function Home() {
   function handleSessionEnd() {
     setConnection(null);
     setInitialMessage(undefined);
+    setView("welcome");
+  }
+
+  function handleClearError() {
+    setConnectionError(null);
+  }
+
+  function handleUnexpectedDisconnect(message: string) {
+    setConnection(null);
+    setInitialMessage(undefined);
+    setConnectionError(message);
     setView("welcome");
   }
 
@@ -138,6 +162,7 @@ export default function Home() {
             onStart={handleStart}
             onViewSession={handleViewSession}
             onResumeSession={handleResumeFromList}
+            onClearError={handleClearError}
             isConnecting={isConnecting}
             error={connectionError}
           />
@@ -155,6 +180,7 @@ export default function Home() {
               serverUrl={connection.serverUrl}
               initialMessage={initialMessage}
               onEnd={handleSessionEnd}
+              onUnexpectedDisconnect={handleUnexpectedDisconnect}
             />
           </motion.div>
         )}
