@@ -13,18 +13,30 @@ from fastapi.middleware.cors import CORSMiddleware
 from livekit import api
 from pydantic import BaseModel
 
-from agent.session_store import create_session, get_session_by_room, get_summary, init_db
+from agent.session_store import (
+    create_session,
+    get_session_by_room,
+    get_session_detail,
+    get_summary,
+    init_db,
+    list_sessions,
+)
 
 logger = logging.getLogger(__name__)
 
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+# Repo root (parent of backend/) and backend/ — either location may hold .env
+_backend_dir = Path(__file__).resolve().parent
+_repo_root = _backend_dir.parent
+load_dotenv(_repo_root / ".env")
+load_dotenv(_backend_dir / ".env")
 
 _REQUIRED_ENV_VARS = ["LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"]
 _missing = [v for v in _REQUIRED_ENV_VARS if not os.environ.get(v)]
 if _missing:
     raise RuntimeError(
         f"Missing required environment variable(s): {', '.join(_missing)}. "
-        "Set them in the project-root .env file or export them in your shell."
+        "Copy .env.example to .env at the project root or in backend/, fill in "
+        "LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET, then restart."
     )
 
 
@@ -48,6 +60,7 @@ app.add_middleware(
 class TokenRequest(BaseModel):
     room_name: str | None = None
     participant_name: str | None = None
+    resume_from_session_id: int | None = None
 
 
 class TokenResponse(BaseModel):
@@ -76,7 +89,10 @@ def create_token(req: TokenRequest) -> TokenResponse:
     room_name = req.room_name or f"hank-{uuid.uuid4().hex[:8]}"
     participant_name = req.participant_name or f"user-{uuid.uuid4().hex[:6]}"
 
-    session_id = get_session_by_room(room_name) or create_session(room_name)
+    session_id = get_session_by_room(room_name) or create_session(
+        room_name,
+        resume_from_session_id=req.resume_from_session_id,
+    )
 
     token = (
         api.AccessToken(api_key, api_secret)
@@ -98,6 +114,21 @@ def create_token(req: TokenRequest) -> TokenResponse:
     return TokenResponse(
         token=token, url=livekit_url, room_name=room_name, session_id=session_id
     )
+
+
+@app.get("/sessions")
+def sessions_list(limit: int = 20) -> list[dict]:
+    """List recent sessions with metadata, newest first."""
+    return list_sessions(limit=limit)
+
+
+@app.get("/sessions/{session_id}")
+def session_detail_endpoint(session_id: int) -> dict:
+    """Get full details for a single session, including its summary."""
+    detail = get_session_detail(session_id)
+    if detail is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return detail
 
 
 @app.get("/sessions/{session_id}/summary")

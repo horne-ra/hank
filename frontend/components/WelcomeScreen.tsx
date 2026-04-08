@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Wrench,
   Droplets,
   Zap,
   Paintbrush,
+  Clock,
+  Loader2,
 } from "lucide-react";
 import { HankLogo } from "./HankLogo";
 
@@ -16,13 +19,71 @@ const SUGGESTIONS = [
   { id: "4", text: "Painting a room evenly", icon: <Paintbrush className="w-4 h-4" /> },
 ];
 
+type PastSession = {
+  id: number;
+  title: string | null;
+  started_at: string | null;
+  summary_ready: boolean;
+};
+
 type Props = {
   onStart: (initialMessage?: string) => void;
+  onViewSession: (sessionId: number) => void;
+  onResumeSession: (sessionId: number) => void;
   isConnecting: boolean;
   error: string | null;
 };
 
-export function WelcomeScreen({ onStart, isConnecting, error }: Props) {
+function formatRelativeTime(iso: string | null): string {
+  if (!iso) return "";
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  const diffMs = now - then;
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+export function WelcomeScreen({
+  onStart,
+  onViewSession,
+  onResumeSession,
+  isConnecting,
+  error,
+}: Props) {
+  const [pastSessions, setPastSessions] = useState<PastSession[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchSessions() {
+      try {
+        const res = await fetch("/api/sessions");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data)) {
+          setPastSessions(data.slice(0, 5));
+        }
+      } catch {
+        /* past sessions are optional */
+      }
+    }
+
+    void fetchSessions();
+    const interval = setInterval(fetchSessions, 5000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -85,6 +146,54 @@ export function WelcomeScreen({ onStart, isConnecting, error }: Props) {
             </button>
           ))}
         </div>
+
+        {pastSessions.length > 0 && (
+          <section className="w-full mt-12">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock className="w-3 h-3 text-neutral-500" />
+              <h3 className="text-[9px] uppercase tracking-[0.2em] text-neutral-500 font-bold">
+                Recent sessions
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {pastSessions.map((session) => (
+                <div
+                  key={session.id}
+                  className="flex items-center gap-2 p-3 bg-[#171717] border border-[#262626] rounded-lg hover:border-amber-500/50 transition-colors"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onViewSession(session.id)}
+                    className="flex-1 min-w-0 text-left"
+                  >
+                    {session.summary_ready && session.title ? (
+                      <p className="text-sm text-neutral-200 truncate">{session.title}</p>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="w-3 h-3 animate-spin text-amber-500/70" />
+                        <p className="text-sm text-neutral-500 italic">
+                          Hank&apos;s writing notes...
+                        </p>
+                      </div>
+                    )}
+                    <p className="text-[10px] text-neutral-500 mt-0.5">
+                      {formatRelativeTime(session.started_at)}
+                    </p>
+                  </button>
+                  {session.summary_ready && (
+                    <button
+                      type="button"
+                      onClick={() => onResumeSession(session.id)}
+                      className="flex-shrink-0 px-3 py-1.5 bg-amber-500/10 border border-amber-500/40 text-amber-500 text-[10px] uppercase tracking-wider font-bold rounded hover:bg-amber-500/20 transition-colors"
+                    >
+                      Continue
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </motion.div>
   );
