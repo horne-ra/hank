@@ -57,8 +57,6 @@ export function useTranscriptHistory(): TranscriptLine[] {
         };
       });
 
-      console.log("[transcript] new entries:", newEntries);
-
       setHistory((prev) => {
         const existingIds = new Set(prev.map((e) => e.id));
         const filtered = newEntries.filter((e) => !existingIds.has(e.id));

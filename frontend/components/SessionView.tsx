@@ -31,18 +31,16 @@ export function SessionView({ onEnd, initialMessage }: Props) {
     if (!initialMessage || connectionState !== ConnectionState.Connected) return;
     if (preseedDone.current) return;
     // TODO: agent-side handling for pre-seeded messages
-    try {
-      const payload = JSON.stringify({
-        type: "user_message",
-        text: initialMessage,
+    const payload = JSON.stringify({
+      type: "user_message",
+      text: initialMessage,
+    });
+    preseedDone.current = true;
+    room.localParticipant
+      .publishData(new TextEncoder().encode(payload), { reliable: true })
+      .catch(() => {
+        preseedDone.current = false;
       });
-      void room.localParticipant.publishData(new TextEncoder().encode(payload), {
-        reliable: true,
-      });
-      preseedDone.current = true;
-    } catch {
-      // non-fatal: user can still speak
-    }
   }, [connectionState, initialMessage, room]);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("HANK");
@@ -59,13 +57,8 @@ export function SessionView({ onEnd, initialMessage }: Props) {
     void localParticipant.setMicrophoneEnabled(!micOn);
   }
 
-  async function handleEndCall() {
-    try {
-      await room.disconnect();
-    } catch (err) {
-      console.error("Failed to disconnect:", err);
-    }
-    onEnd();
+  function handleEndCall() {
+    void room.disconnect();
   }
 
   return (
