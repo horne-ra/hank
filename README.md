@@ -145,7 +145,13 @@ SQLite does not survive that scale as a single file on one disk. You move to Pos
 
 ## Known limitations
 
-There is no user authentication: anyone who can reach the deployment can start a session and see the same global session list. Tests are manual; time went into behavior, not pytest. The database is single-tenant SQLite under `backend/data/`, fine for a demo, wrong for multi-user production without a real store and isolation. Dropped WebRTC connections do not auto-reconnect—you reconnect yourself; auto-reconnect is a deep product decision, not a quick win. The UI is responsive but not a production mobile or PWA story. The welcome screen shows the five most recent past sessions (the API can return more); there is no full history or pagination yet—that belongs in "What I'd build next."
+- There is no user authentication: anyone who can reach the deployment can start a session and see the same global session list.
+- Tests are manual; time went into behavior, not pytest.
+- The database is single-tenant SQLite under `backend/data/`, fine for a demo, wrong for multi-user production without a real store and isolation.
+- Schema changes require deleting `backend/data/hank.db`. The project uses SQLModel's `create_all` which creates missing tables but does not add new columns to existing tables. If you've been running an older version of this project and the schema has changed, delete the database file before restarting — the schema will be recreated on next startup. This is intentional scope — a production system would use Alembic or equivalent for versioned migrations.
+- Dropped WebRTC connections do not auto-reconnect—you reconnect yourself; auto-reconnect is a deep product decision, not a quick win.
+- The UI is responsive but not a production mobile or PWA story.
+- The welcome screen shows the five most recent past sessions (the API can return more); there is no full history or pagination yet—that belongs in "What I'd build next."
 
 ## What I'd build next
 
