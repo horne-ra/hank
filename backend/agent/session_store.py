@@ -30,15 +30,19 @@ class HankSession(SQLModel, table=True):
     ended_at: Optional[datetime] = None
     transcript_json: Optional[str] = None
     summary_json: Optional[str] = None
+    resume_from_session_id: Optional[int] = None
 
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
 
 
-def create_session(room_name: str) -> int:
+def create_session(room_name: str, resume_from_session_id: Optional[int] = None) -> int:
     with Session(engine) as db:
-        row = HankSession(room_name=room_name)
+        row = HankSession(
+            room_name=room_name,
+            resume_from_session_id=resume_from_session_id,
+        )
         db.add(row)
         db.commit()
         db.refresh(row)
@@ -64,6 +68,79 @@ def get_summary(session_id: int) -> Optional[dict]:
         if row is None or row.summary_json is None:
             return None
         return json.loads(row.summary_json)
+
+
+def list_sessions(limit: int = 20) -> list[dict]:
+    """Return recent sessions with metadata, newest first.
+
+    Includes both completed sessions (with summary) and in-flight sessions
+    (ended_at set but summary_json still null) so the frontend can show
+    a 'generating' state for sessions whose summary is still being written.
+    """
+    with Session(engine) as db:
+        stmt = (
+            select(HankSession)
+            .where(HankSession.ended_at.is_not(None))  # type: ignore[union-attr]
+            .order_by(HankSession.started_at.desc())  # type: ignore[union-attr]
+            .limit(limit)
+        )
+        rows = db.exec(stmt).all()
+
+        result = []
+        for row in rows:
+            summary = json.loads(row.summary_json) if row.summary_json else None
+            if summary:
+                title = (
+                    summary.get("session_title")
+                    or (summary.get("topics_covered") or [None])[0]
+                    or "Hank session"
+                )
+            else:
+                title = None
+
+            result.append(
+                {
+                    "id": row.id,
+                    "title": title,
+                    "started_at": row.started_at.isoformat() if row.started_at else None,
+                    "ended_at": row.ended_at.isoformat() if row.ended_at else None,
+                    "summary_ready": summary is not None,
+                }
+            )
+        return result
+
+
+def get_session_detail(session_id: int) -> Optional[dict]:
+    """Return full session details including summary, for the detail view."""
+    with Session(engine) as db:
+        row = db.get(HankSession, session_id)
+        if row is None:
+            return None
+        summary = json.loads(row.summary_json) if row.summary_json else None
+        return {
+            "id": row.id,
+            "started_at": row.started_at.isoformat() if row.started_at else None,
+            "ended_at": row.ended_at.isoformat() if row.ended_at else None,
+            "summary": summary,
+            "summary_ready": summary is not None,
+            "resume_from_session_id": row.resume_from_session_id,
+        }
+
+
+def get_resume_context(session_id: int) -> Optional[dict]:
+    """Get the resume_from session's summary, called by the worker on start.
+
+    Returns None if the current session isn't a resume, or if the previous
+    session has no summary yet.
+    """
+    with Session(engine) as db:
+        current = db.get(HankSession, session_id)
+        if current is None or current.resume_from_session_id is None:
+            return None
+        previous = db.get(HankSession, current.resume_from_session_id)
+        if previous is None or previous.summary_json is None:
+            return None
+        return json.loads(previous.summary_json)
 
 
 async def finalize_session(session_id: int, chat_history: list[dict]) -> None:
@@ -102,6 +179,7 @@ async def finalize_session(session_id: int, chat_history: list[dict]) -> None:
         summary = json.loads(content)
     except (openai.APIError, json.JSONDecodeError) as e:
         summary = {
+            "session_title": "Session summary",
             "topics_covered": [],
             "key_steps_taught": [],
             "things_user_struggled_with": [],

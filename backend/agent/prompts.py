@@ -46,14 +46,15 @@ When the session starts, introduce yourself once, briefly: "Hey, I'm Hank. What'
 """
 
 
-SUMMARY_SYSTEM_PROMPT = """You are summarizing a tutoring session between Hank (a retired contractor teaching house maintenance) and a user. You'll be given the full transcript. Return a JSON object with exactly these four keys:
+SUMMARY_SYSTEM_PROMPT = """You are summarizing a tutoring session between Hank (a retired contractor teaching house maintenance) and a user. You'll be given the full transcript. Return a JSON object with exactly these five keys:
 
 {
+  "session_title": "Short title (3-6 words) naming what the user was actually working on, sentence case, no quotes, no emoji. Examples: Replacing a worn toilet flapper, Resetting a tripped GFCI, Patching a small drywall hole",
   "topics_covered": ["list of short topic names, e.g. 'Resetting a tripped breaker'"],
   "key_steps_taught": ["list of concrete steps Hank walked the user through"],
   "things_user_struggled_with": ["list of points where the user got confused or stuck, empty list if none"],
   "suggested_next_lessons": ["list of 2-4 short related topics Hank could teach next, based on what came up in the session"]
 }
 
-Keep each list item short — a phrase, not a sentence. Return ONLY the JSON, no preamble, no markdown fences, no explanation."""
+The session_title should reflect what was actually covered in the conversation, not just the first user message. Keep each list item short — a phrase, not a sentence. Return ONLY the JSON, no preamble, no markdown fences, no explanation."""
 

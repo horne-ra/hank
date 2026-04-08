@@ -4,7 +4,9 @@ import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { TutorRoom } from "@/components/TutorRoom";
 import { WelcomeScreen } from "@/components/WelcomeScreen";
-import { SummaryPanel } from "@/components/SummaryPanel";
+import { SessionDetail } from "@/components/SessionDetail";
+
+type View = "welcome" | "active" | "session-detail";
 
 type Connection = {
   token: string;
@@ -34,29 +36,32 @@ function isTokenResponse(data: unknown): data is TokenResponse {
 }
 
 export default function Home() {
-  const [view, setView] = useState<"welcome" | "active" | "summary">(
-    "welcome"
-  );
+  const [view, setView] = useState<View>("welcome");
   const [connection, setConnection] = useState<Connection | null>(null);
-  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [viewingSessionId, setViewingSessionId] = useState<number | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [initialMessage, setInitialMessage] = useState<string | undefined>(
     undefined
   );
 
   const connectingRef = useRef(false);
 
-  async function handleStart(seed?: string) {
+  async function handleStart(initialMsg?: string, resumeFromSessionId?: number) {
     if (connectingRef.current) return;
     connectingRef.current = true;
     setIsConnecting(true);
-    setError(null);
+    setConnectionError(null);
+    setInitialMessage(initialMsg);
     try {
       const res = await fetch("/api/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify(
+          resumeFromSessionId
+            ? { resume_from_session_id: resumeFromSessionId }
+            : {}
+        ),
       });
 
       if (!res.ok) {
@@ -73,9 +78,7 @@ export default function Home() {
         } catch {
           /* ignore */
         }
-        throw new Error(
-          detail || `Token fetch failed: ${res.status}`
-        );
+        throw new Error(detail || `Token fetch failed: ${res.status}`);
       }
 
       const data: unknown = await res.json();
@@ -83,15 +86,14 @@ export default function Home() {
         throw new Error("Invalid token response from server");
       }
 
-      setInitialMessage(seed);
-      setSessionId(data.session_id);
       setConnection({
         token: data.token,
         serverUrl: data.url,
       });
+      setViewingSessionId(null);
       setView("active");
     } catch (err) {
-      setError(String(err));
+      setConnectionError(String(err));
     } finally {
       connectingRef.current = false;
       setIsConnecting(false);
@@ -101,18 +103,26 @@ export default function Home() {
   function handleSessionEnd() {
     setConnection(null);
     setInitialMessage(undefined);
-    setView("summary");
+    setView("welcome");
   }
 
-  function handleNewSession(initialMessageArg?: string) {
-    setConnection(null);
-    setSessionId(null);
-    setError(null);
-    setInitialMessage(undefined);
+  function handleViewSession(sessionId: number) {
+    setViewingSessionId(sessionId);
+    setView("session-detail");
+  }
+
+  function handleBackFromDetail() {
+    setViewingSessionId(null);
     setView("welcome");
-    if (initialMessageArg !== undefined) {
-      void handleStart(initialMessageArg);
-    }
+  }
+
+  function handleResumeFromDetail(sessionId: number) {
+    setViewingSessionId(null);
+    void handleStart(undefined, sessionId);
+  }
+
+  function handleResumeFromList(sessionId: number) {
+    void handleStart(undefined, sessionId);
   }
 
   return (
@@ -122,8 +132,10 @@ export default function Home() {
           <WelcomeScreen
             key="welcome"
             onStart={handleStart}
+            onViewSession={handleViewSession}
+            onResumeSession={handleResumeFromList}
             isConnecting={isConnecting}
-            error={error}
+            error={connectionError}
           />
         )}
         {view === "active" && connection && (
@@ -142,17 +154,23 @@ export default function Home() {
             />
           </motion.div>
         )}
-        {view === "summary" && sessionId !== null && (
+        {view === "session-detail" && viewingSessionId !== null && (
           <motion.div
-            key="summary"
+            key="session-detail"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="flex-1 flex flex-col min-h-0 h-full w-full overflow-y-auto"
           >
-            <SummaryPanel
-              sessionId={sessionId}
-              onNewSession={handleNewSession}
+            <SessionDetail
+              key={viewingSessionId}
+              sessionId={viewingSessionId}
+              onBack={handleBackFromDetail}
+              onResume={handleResumeFromDetail}
+              onNewSessionFromTopic={(topic) => {
+                handleBackFromDetail();
+                void handleStart(topic);
+              }}
             />
           </motion.div>
         )}
