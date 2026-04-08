@@ -56,8 +56,6 @@ export function SessionDetail({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    setDetail(null);
-    setError(null);
     let cancelled = false;
     let controller = new AbortController();
 
@@ -134,7 +132,11 @@ export function SessionDetail({
   if (detail.summary_ready && detail.summary?._error) {
     return (
       <main className="min-h-dvh flex flex-col items-center justify-center p-6 bg-[#0a0a0a]">
-        <p className="text-red-500 mb-4 text-center max-w-sm">{detail.summary._error}</p>
+        <p className="text-red-500 mb-4 text-center max-w-sm">
+          Hank couldn&apos;t write up his notes from this session. The
+          conversation itself was saved — you can start a new session to
+          continue.
+        </p>
         <button
           onClick={onBack}
           className="px-6 py-3 bg-[#171717] border border-[#262626] text-neutral-300 rounded-lg"

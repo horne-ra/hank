@@ -1,6 +1,7 @@
 """SQLite persistence for Hank sessions + summary generation."""
 
 import json
+import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,6 +13,8 @@ from sqlalchemy import text
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from agent.prompts import SUMMARY_SYSTEM_PROMPT
+
+logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 DATA_DIR.mkdir(exist_ok=True)
@@ -245,14 +248,15 @@ async def finalize_session(session_id: int, chat_history: list[dict]) -> None:
         )
         content = response.choices[0].message.content or "{}"
         summary = json.loads(content)
-    except (openai.APIError, json.JSONDecodeError) as e:
+    except Exception:
+        logger.exception("Summary generation failed for session %s", session_id)
         summary = {
             "session_title": "Session summary",
             "topics_covered": [],
             "key_steps_taught": [],
             "things_user_struggled_with": [],
             "suggested_next_lessons": [],
-            "_error": f"Summary generation failed: {e}",
+            "_error": "Summary generation failed",
         }
 
     # Backfill summary in a second commit.
