@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from livekit import api
 from pydantic import BaseModel
 
-from agent.session_store import get_summary, init_db
+from agent.session_store import create_session, get_summary, init_db
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -47,6 +47,7 @@ class TokenResponse(BaseModel):
     token: str
     url: str
     room_name: str
+    session_id: int
 
 
 @app.post("/token", response_model=TokenResponse)
@@ -57,6 +58,8 @@ def create_token(req: TokenRequest) -> TokenResponse:
 
     room_name = req.room_name or f"hank-{uuid.uuid4().hex[:8]}"
     participant_name = req.participant_name or f"user-{uuid.uuid4().hex[:6]}"
+
+    session_id = create_session(room_name)
 
     token = (
         api.AccessToken(api_key, api_secret)
@@ -73,7 +76,9 @@ def create_token(req: TokenRequest) -> TokenResponse:
         .to_jwt()
     )
 
-    return TokenResponse(token=token, url=livekit_url, room_name=room_name)
+    return TokenResponse(
+        token=token, url=livekit_url, room_name=room_name, session_id=session_id
+    )
 
 
 @app.get("/sessions/{session_id}/summary")

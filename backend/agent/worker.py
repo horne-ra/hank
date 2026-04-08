@@ -15,7 +15,12 @@ from livekit.agents import AgentSession, JobContext, WorkerOptions, cli
 from livekit.plugins import openai, silero
 from openai.types.beta.realtime.session import InputAudioTranscription
 
-from agent.session_store import create_session, finalize_session, init_db
+from agent.session_store import (
+    create_session,
+    finalize_session,
+    get_session_by_room,
+    init_db,
+)
 from agent.tutor import HankTutor
 
 # Load .env from project root (one level up from backend/)
@@ -43,7 +48,7 @@ async def entrypoint(ctx: JobContext):
     await ctx.connect()
 
     init_db()
-    session_id = create_session(ctx.room.name)
+    session_id = get_session_by_room(ctx.room.name) or create_session(ctx.room.name)
 
     vad = ctx.proc.userdata.get("vad") or silero.VAD.load()
 
