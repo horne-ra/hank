@@ -20,7 +20,8 @@ function isTokenResponse(data: unknown): data is TokenResponse {
     (data as Record<string, unknown>).token !== "" &&
     typeof (data as Record<string, unknown>).url === "string" &&
     (data as Record<string, unknown>).url !== "" &&
-    typeof (data as Record<string, unknown>).room_name === "string"
+    typeof (data as Record<string, unknown>).room_name === "string" &&
+    (data as Record<string, unknown>).room_name !== ""
   );
 }
 
