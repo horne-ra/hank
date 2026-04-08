@@ -163,7 +163,6 @@ hank/
 ├── docker-compose.yml
 ├── dev.sh                     # local development launcher
 ├── .env.example
-├── docs/                      # screenshots (see Demo)
 ├── backend/
 │   ├── Dockerfile
 │   ├── pyproject.toml

@@ -245,7 +245,7 @@ async def finalize_session(session_id: int, chat_history: list[dict]) -> None:
         )
         content = response.choices[0].message.content or "{}"
         summary = json.loads(content)
-    except (openai.APIError, json.JSONDecodeError) as e:
+    except Exception as e:
         summary = {
             "session_title": "Session summary",
             "topics_covered": [],
