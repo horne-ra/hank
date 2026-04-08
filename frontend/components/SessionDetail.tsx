@@ -57,17 +57,22 @@ export function SessionDetail({
 
   useEffect(() => {
     let cancelled = false;
+    let controller = new AbortController();
 
     function clearPoll() {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
         intervalRef.current = null;
       }
+      controller.abort();
     }
 
     async function fetchDetail() {
+      controller = new AbortController();
       try {
-        const res = await fetch(`/api/sessions/${sessionId}`);
+        const res = await fetch(`/api/sessions/${sessionId}`, {
+          signal: controller.signal,
+        });
         if (!res.ok) {
           clearPoll();
           if (!cancelled) setError(`Couldn't load session (status ${res.status})`);
@@ -86,6 +91,7 @@ export function SessionDetail({
           }
         }
       } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
         clearPoll();
         if (!cancelled) setError(String(err));
       }
