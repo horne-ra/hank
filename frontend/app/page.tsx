@@ -97,7 +97,7 @@ function SessionView({ onEnd }: { onEnd: () => void }) {
         Status: {state}
       </p>
       <div className="w-64 h-32">
-        <BarVisualizer state={state} barCount={7} trackRef={audioTrack} />
+        <BarVisualizer state={state} barCount={7} track={audioTrack} />
       </div>
       <VoiceAssistantControlBar />
       <button
