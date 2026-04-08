@@ -69,6 +69,7 @@ export function SessionDetail({
       try {
         const res = await fetch(`/api/sessions/${sessionId}`);
         if (!res.ok) {
+          clearPoll();
           if (!cancelled) setError(`Couldn't load session (status ${res.status})`);
           return;
         }
@@ -85,6 +86,7 @@ export function SessionDetail({
           }
         }
       } catch (err) {
+        clearPoll();
         if (!cancelled) setError(String(err));
       }
     }
