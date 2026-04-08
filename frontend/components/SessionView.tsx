@@ -48,6 +48,8 @@ export function SessionView({
         message = "You were removed from the session.";
       } else if (reason === DisconnectReason.ROOM_DELETED) {
         message = "The session was closed. Please start a new one.";
+      } else if (reason === DisconnectReason.STATE_MISMATCH) {
+        message = "Session state became inconsistent. Please refresh.";
       }
 
       onUnexpectedDisconnect?.(message);

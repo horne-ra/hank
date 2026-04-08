@@ -28,15 +28,25 @@ export function TutorRoom({
       video={false}
       onDisconnected={onEnd}
       onError={(err) => {
+        const micErrors = new Set([
+          "NotAllowedError",
+          "NotFoundError",
+          "NotReadableError",
+          "SecurityError",
+        ]);
+        const msg = err.message?.toLowerCase() ?? "";
         if (
-          err.message?.toLowerCase().includes("permission") ||
-          err.name === "NotAllowedError"
+          micErrors.has(err.name) ||
+          msg.includes("permission") ||
+          msg.includes("not found") ||
+          msg.includes("no device")
         ) {
           onUnexpectedDisconnect?.(
             "Hank needs access to your microphone to hear you. Please allow mic access in your browser settings and try again."
           );
         } else {
-          onUnexpectedDisconnect?.(`Connection error: ${err.message}`);
+          const detail = err.message || err.name || "Unknown error";
+          onUnexpectedDisconnect?.(`Connection error: ${detail}`);
         }
       }}
       className="h-dvh flex flex-col"

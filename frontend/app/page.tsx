@@ -46,10 +46,12 @@ export default function Home() {
   );
 
   const connectingRef = useRef(false);
+  const disconnectHandledRef = useRef(false);
 
   async function handleStart(initialMsg?: string, resumeFromSessionId?: number) {
     if (connectingRef.current) return;
     connectingRef.current = true;
+    disconnectHandledRef.current = false;
     setIsConnecting(true);
     setConnectionError(null);
     setInitialMessage(initialMsg);
@@ -128,6 +130,8 @@ export default function Home() {
   }
 
   function handleUnexpectedDisconnect(message: string) {
+    if (disconnectHandledRef.current) return;
+    disconnectHandledRef.current = true;
     setConnection(null);
     setInitialMessage(undefined);
     setConnectionError(message);
