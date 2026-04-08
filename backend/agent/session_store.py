@@ -38,7 +38,10 @@ class HankSession(SQLModel, table=True):
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
     with engine.connect() as conn:
-        conn.execute(text("PRAGMA journal_mode=WAL"))
+        result = conn.execute(text("PRAGMA journal_mode=WAL"))
+        mode = result.scalar()
+        if mode is None or str(mode).lower() != "wal":
+            raise RuntimeError(f"Failed to enable WAL journal mode (got: {mode})")
         conn.commit()
 
 
