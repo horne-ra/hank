@@ -44,6 +44,7 @@ export function SummaryPanel({ sessionId, onNewSession }: Props) {
     let attempts = 0;
     const BASE_DELAY = 1000;
     const MAX_DELAY = 8000;
+    const MAX_ATTEMPTS = 10;
 
     async function poll() {
       if (cancelled) return;
@@ -60,7 +61,11 @@ export function SummaryPanel({ sessionId, onNewSession }: Props) {
         }
 
         if (res.status === 404) {
-          if (!cancelled) setTimeout(poll, delay);
+          if (!cancelled && attempts < MAX_ATTEMPTS) {
+            setTimeout(poll, delay);
+          } else if (!cancelled) {
+            setError("Summary is still being generated. Please try again later.");
+          }
           return;
         }
 
@@ -68,7 +73,11 @@ export function SummaryPanel({ sessionId, onNewSession }: Props) {
           setError(`Couldn't load summary (status ${res.status})`);
         }
       } catch {
-        if (!cancelled) setTimeout(poll, delay);
+        if (!cancelled && attempts < MAX_ATTEMPTS) {
+          setTimeout(poll, delay);
+        } else if (!cancelled) {
+          setError("Couldn't reach the server to load your summary.");
+        }
       }
     }
 
