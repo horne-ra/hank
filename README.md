@@ -6,17 +6,13 @@ Hank is a real-time voice agent who calmly walks homeowners through plumbing, el
 
 ## Demo
 
-_Add a screenshot of the welcome screen, an active session, the summary card, and a resumed session. These show the four states of the product._
+<img width="812" height="969" alt="Screenshot 2026-04-08 at 1 57 07 PM" src="https://github.com/user-attachments/assets/5b473f66-bd22-47fd-8890-3c569104dc52" />
 
-Planned image paths once captured:
+<img width="819" height="967" alt="Screenshot 2026-04-08 at 1 58 40 PM" src="https://github.com/user-attachments/assets/d60a19e3-025b-4029-9ef5-a4d3995d4c4e" />
 
-![Welcome screen with past sessions](docs/welcome.png)
+<img width="817" height="966" alt="Screenshot 2026-04-08 at 1 57 21 PM" src="https://github.com/user-attachments/assets/c90dc4d1-1cee-4f05-8788-af5287fbbbd1" />
 
-![Active session](docs/active-session.png)
-
-![Post-session summary card](docs/summary-card.png)
-
-![Past session detail with resume](docs/session-detail.png)
+<img width="818" height="968" alt="Screenshot 2026-04-08 at 1 59 14 PM" src="https://github.com/user-attachments/assets/574fff90-9a6e-4cd3-aea2-4b3821444f25" />
 
 ## Quick start
 
