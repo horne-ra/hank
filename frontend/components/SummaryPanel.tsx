@@ -28,7 +28,8 @@ export function SummaryPanel({ sessionId, onNewSession }: Props) {
   useEffect(() => {
     let cancelled = false;
     let attempts = 0;
-    const maxAttempts = 20; // ~20 seconds at 1s intervals
+    // Wait up to ~45s — the worker's shutdown sequence (session report upload + summary generation) can take 20-30s before the row is finalized in SQLite.
+    const maxAttempts = 45;
 
     async function poll() {
       if (cancelled) return;
