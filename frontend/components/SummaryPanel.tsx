@@ -10,11 +10,25 @@ type Summary = {
   key_steps_taught: string[];
   things_user_struggled_with: string[];
   suggested_next_lessons: string[];
-  _error?: string;
 };
 
-const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+function parseSummary(data: unknown): Summary {
+  if (typeof data !== "object" || data === null) {
+    throw new Error("Invalid summary response");
+  }
+  const obj = data as Record<string, unknown>;
+  if (typeof obj._error === "string") {
+    throw new Error(obj._error);
+  }
+  const toArray = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  return {
+    topics_covered: toArray(obj.topics_covered),
+    key_steps_taught: toArray(obj.key_steps_taught),
+    things_user_struggled_with: toArray(obj.things_user_struggled_with),
+    suggested_next_lessons: toArray(obj.suggested_next_lessons),
+  };
+}
 
 type Props = {
   sessionId: number;
@@ -28,26 +42,25 @@ export function SummaryPanel({ sessionId, onNewSession }: Props) {
   useEffect(() => {
     let cancelled = false;
     let attempts = 0;
-    // Wait up to ~45s — the worker's shutdown sequence (session report upload + summary generation) can take 20-30s before the row is finalized in SQLite.
-    const maxAttempts = 45;
+    const BASE_DELAY = 1000;
+    const MAX_DELAY = 8000;
 
     async function poll() {
       if (cancelled) return;
       attempts++;
+      const delay = Math.min(BASE_DELAY * 2 ** (attempts - 1), MAX_DELAY);
 
       try {
-        const res = await fetch(
-          `${BACKEND_URL}/sessions/${sessionId}/summary`
-        );
+        const res = await fetch(`/api/summary?sessionId=${sessionId}`);
 
         if (res.ok) {
-          const data = (await res.json()) as Summary;
-          if (!cancelled) setSummary(data);
+          const data: unknown = await res.json();
+          if (!cancelled) setSummary(parseSummary(data));
           return;
         }
 
-        if (res.status === 404 && attempts < maxAttempts) {
-          setTimeout(poll, 1000);
+        if (res.status === 404) {
+          if (!cancelled) setTimeout(poll, delay);
           return;
         }
 
@@ -55,13 +68,7 @@ export function SummaryPanel({ sessionId, onNewSession }: Props) {
           setError(`Couldn't load summary (status ${res.status})`);
         }
       } catch {
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 1000);
-          return;
-        }
-        if (!cancelled) {
-          setError("Couldn't reach the backend to load your summary.");
-        }
+        if (!cancelled) setTimeout(poll, delay);
       }
     }
 

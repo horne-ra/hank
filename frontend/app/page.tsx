@@ -108,10 +108,9 @@ export default function Home() {
     setConnection(null);
     setSessionId(null);
     setError(null);
-    if (initialMessageArg === undefined) {
-      setInitialMessage(undefined);
-      setView("welcome");
-    } else {
+    setInitialMessage(undefined);
+    setView("welcome");
+    if (initialMessageArg !== undefined) {
       void handleStart(initialMessageArg);
     }
   }
