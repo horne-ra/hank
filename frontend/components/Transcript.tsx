@@ -1,11 +1,13 @@
 "use client";
 
-import { useTranscriptHistory } from "../hooks/useTranscriptHistory";
+import type { TranscriptEntry } from "../hooks/useTranscriptHistory";
 
-export function Transcript() {
-  const lines = useTranscriptHistory();
+type Props = {
+  history: TranscriptEntry[];
+};
 
-  if (lines.length === 0) {
+export function Transcript({ history }: Props) {
+  if (history.length === 0) {
     return (
       <div className="flex flex-1 items-center justify-center px-4 py-8">
         <p className="text-sm text-neutral-500 text-center">
@@ -17,7 +19,7 @@ export function Transcript() {
 
   return (
     <div className="w-full flex-1 min-h-0 overflow-y-auto scrollbar-hide px-4 py-2">
-      {lines.map((line) =>
+      {history.map((line) =>
         line.role === "hank" ? (
           <div key={line.id} className="mb-4">
             <div className="flex justify-between items-baseline mb-1 px-0.5">

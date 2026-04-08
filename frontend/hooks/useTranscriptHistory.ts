@@ -9,7 +9,7 @@ import {
   TranscriptionSegment,
 } from "livekit-client";
 
-export type TranscriptLine = {
+export type TranscriptEntry = {
   id: string;
   role: "hank" | "you";
   text: string;
@@ -25,14 +25,9 @@ function formatTime(ms: number): string {
   });
 }
 
-/** LiveKit may provide wall-clock as seconds or milliseconds. */
-function toDisplayMs(t: number): number {
-  return t < 1e12 ? t * 1000 : t;
-}
-
-export function useTranscriptHistory(): TranscriptLine[] {
+export function useTranscriptHistory(): TranscriptEntry[] {
   const room = useRoomContext();
-  const [history, setHistory] = useState<TranscriptLine[]>([]);
+  const [history, setHistory] = useState<TranscriptEntry[]>([]);
 
   useEffect(() => {
     if (!room) return;
@@ -46,8 +41,8 @@ export function useTranscriptHistory(): TranscriptLine[] {
       if (finalSegments.length === 0) return;
 
       const isAgent = participant?.isAgent ?? false;
-      const newEntries: TranscriptLine[] = finalSegments.map((s) => {
-        const sortMs = toDisplayMs(s.startTime);
+      const newEntries: TranscriptEntry[] = finalSegments.map((s) => {
+        const sortMs = s.startTime;
         return {
           id: s.id,
           role: isAgent ? ("hank" as const) : ("you" as const),

@@ -8,6 +8,7 @@
 @layer base {
   body {
     @apply bg-[#0a0a0a] text-neutral-200 antialiased;
+
     font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   }
 }
@@ -16,6 +17,7 @@
   &::-webkit-scrollbar {
     display: none;
   }
+
   -ms-overflow-style: none;
   scrollbar-width: none;
 }

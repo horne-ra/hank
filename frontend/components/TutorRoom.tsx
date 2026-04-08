@@ -22,7 +22,7 @@ export function TutorRoom({ token, serverUrl, initialMessage, onEnd }: Props) {
       onDisconnected={onEnd}
       className="h-dvh flex flex-col"
     >
-      <SessionView onEnd={onEnd} initialMessage={initialMessage} />
+      <SessionView initialMessage={initialMessage} />
       <RoomAudioRenderer />
     </LiveKitRoom>
   );

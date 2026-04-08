@@ -10,21 +10,22 @@ import {
   useVoiceAssistant,
 } from "@livekit/components-react";
 import { Mic, MicOff, PhoneOff } from "lucide-react";
+import { useTranscriptHistory } from "../hooks/useTranscriptHistory";
 import { Transcript } from "./Transcript";
 import { Visualizer } from "./Visualizer";
 
 type ActiveTab = "HANK" | "TRANSCRIPT";
 
 type Props = {
-  onEnd: () => void;
   initialMessage?: string;
 };
 
-export function SessionView({ onEnd, initialMessage }: Props) {
+export function SessionView({ initialMessage }: Props) {
   const room = useRoomContext();
   const connectionState = useConnectionState(room);
   const { state, agentTranscriptions } = useVoiceAssistant();
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
+  const history = useTranscriptHistory();
 
   const preseedDone = useRef(false);
   useEffect(() => {
@@ -131,7 +132,7 @@ export function SessionView({ onEnd, initialMessage }: Props) {
               exit={{ opacity: 0, scale: 0.98 }}
               className="flex flex-col flex-1 w-full min-h-0"
             >
-              <Transcript />
+              <Transcript history={history} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -140,7 +141,7 @@ export function SessionView({ onEnd, initialMessage }: Props) {
       <footer className="h-32 flex items-center justify-center gap-8 bg-[#0a0a0a] shrink-0">
         <button
           type="button"
-          onClick={() => toggleMic()}
+          onClick={toggleMic}
           className="w-14 h-14 rounded-full flex items-center justify-center transition-all bg-amber-500 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)]"
           aria-label={micOn ? "Mute microphone" : "Unmute microphone"}
         >
