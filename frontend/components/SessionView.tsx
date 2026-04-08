@@ -2,7 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ConnectionState } from "livekit-client";
+import {
+  ConnectionState,
+  DisconnectReason,
+  RoomEvent,
+} from "livekit-client";
 import {
   useConnectionState,
   useLocalParticipant,
@@ -18,10 +22,44 @@ type ActiveTab = "HANK" | "TRANSCRIPT";
 
 type Props = {
   initialMessage?: string;
+  onUnexpectedDisconnect?: (message: string) => void;
 };
 
-export function SessionView({ initialMessage }: Props) {
+export function SessionView({
+  initialMessage,
+  onUnexpectedDisconnect,
+}: Props) {
   const room = useRoomContext();
+
+  useEffect(() => {
+    if (!room) return;
+
+    const handleDisconnect = (reason?: DisconnectReason) => {
+      if (reason === DisconnectReason.CLIENT_INITIATED || reason === undefined) {
+        return;
+      }
+
+      let message = "Lost connection to Hank.";
+      if (reason === DisconnectReason.SERVER_SHUTDOWN) {
+        message = "Hank's session was interrupted. Please start a new one.";
+      } else if (reason === DisconnectReason.DUPLICATE_IDENTITY) {
+        message = "Another session for this user was started. Please refresh.";
+      } else if (reason === DisconnectReason.PARTICIPANT_REMOVED) {
+        message = "You were removed from the session.";
+      } else if (reason === DisconnectReason.ROOM_DELETED) {
+        message = "The session was closed. Please start a new one.";
+      } else if (reason === DisconnectReason.STATE_MISMATCH) {
+        message = "Session state became inconsistent. Please refresh.";
+      }
+
+      onUnexpectedDisconnect?.(message);
+    };
+
+    room.on(RoomEvent.Disconnected, handleDisconnect);
+    return () => {
+      room.off(RoomEvent.Disconnected, handleDisconnect);
+    };
+  }, [room, onUnexpectedDisconnect]);
   const connectionState = useConnectionState(room);
   const { state, agentTranscriptions } = useVoiceAssistant();
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
