@@ -3,17 +3,6 @@ import { NextResponse } from "next/server";
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 
 export async function POST(request: Request) {
-  const secret = process.env.TOKEN_AUTH_SECRET;
-  if (!secret) {
-    return NextResponse.json(
-      {
-        error:
-          "TOKEN_AUTH_SECRET is not set (required to call the token server)",
-      },
-      { status: 500 }
-    );
-  }
-
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
@@ -23,7 +12,6 @@ export async function POST(request: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${secret}`,
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -47,6 +35,7 @@ export async function POST(request: Request) {
         { status: 502 }
       );
     }
+
     return NextResponse.json(data);
   } catch (err) {
     const message =
