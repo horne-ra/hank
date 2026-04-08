@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -12,11 +12,26 @@ import "@livekit/components-styles";
 
 type TokenResponse = { token: string; url: string; room_name: string };
 
+function isTokenResponse(data: unknown): data is TokenResponse {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    typeof (data as Record<string, unknown>).token === "string" &&
+    (data as Record<string, unknown>).token !== "" &&
+    typeof (data as Record<string, unknown>).url === "string" &&
+    (data as Record<string, unknown>).url !== "" &&
+    typeof (data as Record<string, unknown>).room_name === "string"
+  );
+}
+
 export default function Home() {
   const [conn, setConn] = useState<TokenResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const connecting = useRef(false);
 
   async function connect() {
+    if (connecting.current) return;
+    connecting.current = true;
     setError(null);
     try {
       const res = await fetch("/api/token", {
@@ -25,10 +40,15 @@ export default function Home() {
         body: JSON.stringify({}),
       });
       if (!res.ok) throw new Error(`Token fetch failed: ${res.status}`);
-      const data = (await res.json()) as TokenResponse;
+      const data: unknown = await res.json();
+      if (!isTokenResponse(data)) {
+        throw new Error("Invalid token response from server");
+      }
       setConn(data);
     } catch (err) {
       setError(String(err));
+    } finally {
+      connecting.current = false;
     }
   }
 

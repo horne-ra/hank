@@ -14,6 +14,9 @@ export async function POST(request: Request) {
     );
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+
   try {
     const body = await request.json().catch(() => ({}));
     const res = await fetch(`${BACKEND_URL}/token`, {
@@ -23,12 +26,15 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${secret}`,
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
+
     if (!res.ok) {
       const text = await res.text().catch(() => "");
+      const status = res.status >= 400 && res.status < 600 ? res.status : 502;
       return NextResponse.json(
         { error: `Token server returned ${res.status}`, detail: text },
-        { status: 502 }
+        { status }
       );
     }
 
@@ -43,9 +49,12 @@ export async function POST(request: Request) {
     }
     return NextResponse.json(data);
   } catch (err) {
-    return NextResponse.json(
-      { error: `Failed to reach token server: ${err}` },
-      { status: 502 }
-    );
+    const message =
+      err instanceof DOMException && err.name === "AbortError"
+        ? "Token server request timed out"
+        : `Failed to reach token server: ${err}`;
+    return NextResponse.json({ error: message }, { status: 502 });
+  } finally {
+    clearTimeout(timeout);
   }
 }
