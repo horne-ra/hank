@@ -76,7 +76,7 @@ async def finalize_session(session_id: int, chat_history: list[dict]) -> None:
         row = db.get(HankSession, session_id)
         if row is None:
             return
-        row.ended_at = lambda: datetime.now(timezone.utc)()
+        row.ended_at = datetime.now(timezone.utc)
         row.transcript_json = transcript_str
         db.add(row)
         db.commit()
