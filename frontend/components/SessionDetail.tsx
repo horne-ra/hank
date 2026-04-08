@@ -56,6 +56,8 @@ export function SessionDetail({
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
+    setDetail(null);
+    setError(null);
     let cancelled = false;
     let controller = new AbortController();
 
