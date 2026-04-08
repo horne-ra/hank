@@ -111,7 +111,11 @@ echo "  Frontend:      http://localhost:3000"
 echo "  Press Ctrl+C to stop everything."
 echo ""
 
-# Track child PIDs for cleanup
+# Enable job control so background jobs get their own process groups.
+# This ensures $! is the PGID leader and kill -- -$pid works correctly.
+set -m
+
+# Track child PIDs (= PGIDs due to job control) for cleanup
 PIDS=()
 
 cleanup() {
