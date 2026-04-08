@@ -61,6 +61,7 @@ class TokenRequest(BaseModel):
     room_name: str | None = None
     participant_name: str | None = None
     resume_from_session_id: int | None = None
+    initial_message: str | None = None
 
 
 class TokenResponse(BaseModel):
@@ -92,6 +93,7 @@ def create_token(req: TokenRequest) -> TokenResponse:
     session_id = get_session_by_room(room_name) or create_session(
         room_name,
         resume_from_session_id=req.resume_from_session_id,
+        initial_message=req.initial_message,
     )
 
     token = (

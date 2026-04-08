@@ -31,23 +31,35 @@ class HankSession(SQLModel, table=True):
     transcript_json: Optional[str] = None
     summary_json: Optional[str] = None
     resume_from_session_id: Optional[int] = None
+    initial_message: Optional[str] = None
 
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
 
 
-def create_session(room_name: str, resume_from_session_id: Optional[int] = None) -> int:
+def create_session(
+    room_name: str,
+    resume_from_session_id: Optional[int] = None,
+    initial_message: Optional[str] = None,
+) -> int:
     with Session(engine) as db:
         row = HankSession(
             room_name=room_name,
             resume_from_session_id=resume_from_session_id,
+            initial_message=initial_message,
         )
         db.add(row)
         db.commit()
         db.refresh(row)
         assert row.id is not None
         return row.id
+
+
+def get_initial_message(session_id: int) -> Optional[str]:
+    with Session(engine) as db:
+        row = db.get(HankSession, session_id)
+        return row.initial_message if row else None
 
 
 def get_session_by_room(room_name: str) -> Optional[int]:
