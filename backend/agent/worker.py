@@ -155,7 +155,7 @@ async def entrypoint(ctx: JobContext):
             "Two sentences maximum. English only."
         )
     elif initial_message and initial_message.strip():
-        topic = initial_message.strip()
+        topic = initial_message.strip()[:200].replace("\n", " ").replace("\r", " ")
         greeting_instructions = (
             f"Respond in English only. The user just started a session and chose this topic: '{topic}'. "
             "Greet them briefly as Hank, acknowledge what they're working on, and ask one specific clarifying "
