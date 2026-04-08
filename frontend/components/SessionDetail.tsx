@@ -133,9 +133,9 @@ export function SessionDetail({
     return (
       <main className="min-h-dvh flex flex-col items-center justify-center p-6 bg-[#0a0a0a]">
         <p className="text-red-500 mb-4 text-center max-w-sm">
-          {
-            "Hank couldn't write up his notes from this session. The conversation itself was saved — you can start a new session to continue."
-          }
+          Hank couldn&apos;t write up his notes from this session. The
+          conversation itself was saved — you can start a new session to
+          continue.
         </p>
         <button
           onClick={onBack}
