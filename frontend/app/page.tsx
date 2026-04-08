@@ -1,38 +1,54 @@
 "use client";
 
-import { useState, useRef } from "react";
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  VoiceAssistantControlBar,
-  useVoiceAssistant,
-  BarVisualizer,
-} from "@livekit/components-react";
-import "@livekit/components-styles";
+import { useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { TutorRoom } from "@/components/TutorRoom";
+import { WelcomeScreen } from "@/components/WelcomeScreen";
 
-type TokenResponse = { token: string; url: string; room_name: string };
+type Connection = {
+  token: string;
+  serverUrl: string;
+  roomName: string;
+  sessionId: number;
+};
+
+type TokenResponse = {
+  token: string;
+  url: string;
+  room_name: string;
+  session_id: number;
+};
 
 function isTokenResponse(data: unknown): data is TokenResponse {
+  if (typeof data !== "object" || data === null) return false;
+  const o = data as Record<string, unknown>;
   return (
-    typeof data === "object" &&
-    data !== null &&
-    typeof (data as Record<string, unknown>).token === "string" &&
-    (data as Record<string, unknown>).token !== "" &&
-    typeof (data as Record<string, unknown>).url === "string" &&
-    (data as Record<string, unknown>).url !== "" &&
-    typeof (data as Record<string, unknown>).room_name === "string" &&
-    (data as Record<string, unknown>).room_name !== ""
+    typeof o.token === "string" &&
+    o.token !== "" &&
+    typeof o.url === "string" &&
+    o.url !== "" &&
+    typeof o.room_name === "string" &&
+    o.room_name !== "" &&
+    typeof o.session_id === "number" &&
+    Number.isFinite(o.session_id)
   );
 }
 
 export default function Home() {
-  const [conn, setConn] = useState<TokenResponse | null>(null);
+  const [view, setView] = useState<"welcome" | "active">("welcome");
+  const [connection, setConnection] = useState<Connection | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const connecting = useRef(false);
+  const [initialMessage, setInitialMessage] = useState<string | undefined>(
+    undefined
+  );
 
-  async function connect() {
-    if (connecting.current) return;
-    connecting.current = true;
+  const connectingRef = useRef(false);
+
+  async function onStart(seed?: string) {
+    if (connectingRef.current) return;
+    connectingRef.current = true;
+    setIsConnecting(true);
     setError(null);
     try {
       const res = await fetch("/api/token", {
@@ -40,72 +56,80 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      if (!res.ok) throw new Error(`Token fetch failed: ${res.status}`);
+
+      if (!res.ok) {
+        let detail = "";
+        try {
+          const errJson: unknown = await res.json();
+          if (typeof errJson === "object" && errJson !== null) {
+            const e = errJson as { error?: unknown; detail?: unknown };
+            const parts = [e.error, e.detail].filter(
+              (x) => typeof x === "string" && x.length > 0
+            ) as string[];
+            detail = parts.join(": ");
+          }
+        } catch {
+          /* ignore */
+        }
+        throw new Error(
+          detail || `Token fetch failed: ${res.status}`
+        );
+      }
+
       const data: unknown = await res.json();
       if (!isTokenResponse(data)) {
         throw new Error("Invalid token response from server");
       }
-      setConn(data);
+
+      setInitialMessage(seed);
+      setConnection({
+        token: data.token,
+        serverUrl: data.url,
+        roomName: data.room_name,
+        sessionId: data.session_id,
+      });
+      setView("active");
     } catch (err) {
       setError(String(err));
     } finally {
-      connecting.current = false;
+      connectingRef.current = false;
+      setIsConnecting(false);
     }
   }
 
-  function disconnect() {
-    setConn(null);
-  }
-
-  if (!conn) {
-    return (
-      <main className="min-h-dvh flex flex-col items-center justify-center gap-6 p-8">
-        <h1 className="text-3xl font-bold">Hank — Phase 4 wiring test</h1>
-        <button
-          onClick={connect}
-          className="px-6 py-3 bg-amber-500 text-black font-bold rounded-lg"
-        >
-          Start talking to Hank
-        </button>
-        {error && <p className="text-red-500">{error}</p>}
-      </main>
-    );
+  function onEnd() {
+    setConnection(null);
+    setInitialMessage(undefined);
+    setView("welcome");
   }
 
   return (
-    <LiveKitRoom
-      token={conn.token}
-      serverUrl={conn.url}
-      connect
-      audio
-      video={false}
-      onDisconnected={disconnect}
-      className="min-h-dvh"
-    >
-      <SessionView onEnd={disconnect} />
-      <RoomAudioRenderer />
-    </LiveKitRoom>
-  );
-}
-
-function SessionView({ onEnd }: { onEnd: () => void }) {
-  const { state, audioTrack } = useVoiceAssistant();
-
-  return (
-    <main className="min-h-dvh flex flex-col items-center justify-center gap-6 p-8">
-      <p className="text-sm uppercase tracking-wider text-neutral-500">
-        Status: {state}
-      </p>
-      <div className="w-64 h-32">
-        <BarVisualizer state={state} barCount={7} track={audioTrack} />
-      </div>
-      <VoiceAssistantControlBar />
-      <button
-        onClick={onEnd}
-        className="px-4 py-2 border border-red-500 text-red-500 rounded-lg"
-      >
-        End session
-      </button>
-    </main>
+    <div className="h-dvh flex flex-col bg-[#0a0a0a] overflow-hidden">
+      <AnimatePresence mode="wait">
+        {view === "welcome" ? (
+          <WelcomeScreen
+            key="welcome"
+            onStart={onStart}
+            isConnecting={isConnecting}
+            error={error}
+          />
+        ) : connection ? (
+          <motion.div
+            key="active"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col min-h-0 h-full w-full"
+          >
+            <TutorRoom
+              token={connection.token}
+              serverUrl={connection.serverUrl}
+              initialMessage={initialMessage}
+              onEnd={onEnd}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </div>
   );
 }
