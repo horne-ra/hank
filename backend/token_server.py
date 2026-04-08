@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from livekit import api
 from pydantic import BaseModel
 
-from agent.session_store import create_session, get_summary, init_db
+from agent.session_store import create_session, get_session_by_room, get_summary, init_db
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ def create_token(req: TokenRequest) -> TokenResponse:
     room_name = req.room_name or f"hank-{uuid.uuid4().hex[:8]}"
     participant_name = req.participant_name or f"user-{uuid.uuid4().hex[:6]}"
 
-    session_id = create_session(room_name)
+    session_id = get_session_by_room(room_name) or create_session(room_name)
 
     token = (
         api.AccessToken(api_key, api_secret)

@@ -46,9 +46,13 @@ def create_session(room_name: str) -> int:
 
 
 def get_session_by_room(room_name: str) -> Optional[int]:
-    """Return the session id for a room, or None if not found."""
+    """Return the most recent session id for a room, or None if not found."""
     with Session(engine) as db:
-        stmt = select(HankSession).where(HankSession.room_name == room_name)
+        stmt = (
+            select(HankSession)
+            .where(HankSession.room_name == room_name)
+            .order_by(HankSession.started_at.desc())  # type: ignore[union-attr]
+        )
         row = db.exec(stmt).first()
         return row.id if row else None
 
