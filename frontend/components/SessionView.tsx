@@ -30,14 +30,19 @@ export function SessionView({ initialMessage }: Props) {
   const preseedDone = useRef(false);
   const [preseedRetry, setPreseedRetry] = useState(0);
   const preseedInFlight = useRef(false);
+  const MAX_PRESEED_ATTEMPTS = 4;
+  const BASE_DELAY = 500;
+  const MAX_DELAY = 4000;
   useEffect(() => {
     if (!initialMessage || connectionState !== ConnectionState.Connected) return;
     if (preseedDone.current || preseedInFlight.current) return;
+    if (preseedRetry >= MAX_PRESEED_ATTEMPTS) return;
     const payload = JSON.stringify({
       type: "user_message",
       text: initialMessage,
     });
     preseedInFlight.current = true;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     room.localParticipant
       .publishData(new TextEncoder().encode(payload), { reliable: true })
       .then(() => {
@@ -45,8 +50,14 @@ export function SessionView({ initialMessage }: Props) {
       })
       .catch(() => {
         preseedInFlight.current = false;
-        setPreseedRetry((n) => n + 1);
+        const delay = Math.min(BASE_DELAY * 2 ** preseedRetry, MAX_DELAY);
+        retryTimer = setTimeout(() => {
+          setPreseedRetry((n) => n + 1);
+        }, delay);
       });
+    return () => {
+      clearTimeout(retryTimer);
+    };
   }, [connectionState, initialMessage, room, preseedRetry]);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("HANK");
