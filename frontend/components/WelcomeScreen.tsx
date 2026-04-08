@@ -23,7 +23,6 @@ type PastSession = {
   id: number;
   title: string | null;
   started_at: string | null;
-  ended_at: string | null;
   summary_ready: boolean;
 };
 

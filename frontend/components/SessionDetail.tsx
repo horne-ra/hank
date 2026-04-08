@@ -213,9 +213,9 @@ export function SessionDetail({
             Next time, let&apos;s tackle
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {summary.suggested_next_lessons.map((lesson) => (
+            {summary.suggested_next_lessons.map((lesson, idx) => (
               <button
-                key={lesson}
+                key={`${lesson}-${idx}`}
                 onClick={() => onNewSessionFromTopic(lesson)}
                 className="text-left p-4 bg-[#171717] border border-[#262626] rounded-lg text-sm text-neutral-300 hover:border-amber-500 transition-colors"
               >
