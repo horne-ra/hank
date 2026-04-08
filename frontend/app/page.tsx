@@ -54,14 +54,18 @@ export default function Home() {
     setConnectionError(null);
     setInitialMessage(initialMsg);
     try {
+      const body: Record<string, unknown> = {};
+      if (resumeFromSessionId) {
+        body.resume_from_session_id = resumeFromSessionId;
+      }
+      if (initialMsg) {
+        body.initial_message = initialMsg;
+      }
+
       const res = await fetch("/api/token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          resumeFromSessionId
-            ? { resume_from_session_id: resumeFromSessionId }
-            : {}
-        ),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {

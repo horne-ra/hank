@@ -18,6 +18,7 @@ from openai.types.beta.realtime.session import InputAudioTranscription
 from agent.session_store import (
     create_session,
     finalize_session,
+    get_initial_message,
     get_resume_context,
     get_resume_transcript,
     get_session_by_room,
@@ -75,6 +76,7 @@ async def entrypoint(ctx: JobContext):
 
     resume_transcript = get_resume_transcript(session_id)
     resume_summary = get_resume_context(session_id) if resume_transcript is None else None
+    initial_message = get_initial_message(session_id)
 
     extra_instructions = None
     if resume_summary:
@@ -151,6 +153,14 @@ async def entrypoint(ctx: JobContext):
             "Mention generally that you remember helping them before, and ask what they want to work on today. "
             "Do NOT invent or guess at specific things you previously discussed. "
             "Two sentences maximum. English only."
+        )
+    elif initial_message and initial_message.strip():
+        topic = initial_message.strip()
+        greeting_instructions = (
+            f"Respond in English only. The user just started a session and chose this topic: '{topic}'. "
+            "Greet them briefly as Hank, acknowledge what they're working on, and ask one specific clarifying "
+            "question to get started — like what tools they have on hand or where the problem is. "
+            "Two sentences maximum. English only. Don't ask 'what are we fixing today' since they've already told you."
         )
     else:
         greeting_instructions = (
