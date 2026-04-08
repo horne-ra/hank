@@ -35,6 +35,8 @@ docker compose up --build
 
 Open http://localhost:3000 and click "Start talking to Hank".
 
+After you stop the stack with Ctrl+C, start it again with `docker compose up` (use `docker compose up --build` if you changed Dockerfiles). Do not run this at the same time as Option 2—they both use ports **3000** and **8000**.
+
 ### Option 2: Local development
 
 For inspecting code or iterating quickly. Requirements: Python 3.11+, Node 20+, uv, pnpm.
@@ -47,6 +49,8 @@ cp .env.example .env  # then fill in your LiveKit and OpenAI keys
 ```
 
 Open http://localhost:3000.
+
+Stop with Ctrl+C (the script cleans up child processes); run `./dev.sh` again to restart. Use **Option 1** or **Option 2**, not both at once, or you will get port conflicts.
 
 **Recommended:** use headphones. See **Hot mic and voice bleed** under Things I learned for why.
 

@@ -8,6 +8,7 @@ from typing import Optional
 
 import openai
 from openai import AsyncOpenAI
+from sqlalchemy import text
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
 from agent.prompts import SUMMARY_SYSTEM_PROMPT
@@ -36,6 +37,12 @@ class HankSession(SQLModel, table=True):
 
 def init_db() -> None:
     SQLModel.metadata.create_all(engine)
+    with engine.connect() as conn:
+        result = conn.execute(text("PRAGMA journal_mode=WAL"))
+        mode = result.scalar()
+        if mode is None or str(mode).lower() != "wal":
+            raise RuntimeError(f"Failed to enable WAL journal mode (got: {mode})")
+        conn.commit()
 
 
 def create_session(
