@@ -25,12 +25,22 @@ export async function POST(request: Request) {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
+      const text = await res.text().catch(() => "");
       return NextResponse.json(
-        { error: `Token server returned ${res.status}` },
+        { error: `Token server returned ${res.status}`, detail: text },
         { status: 502 }
       );
     }
-    const data = await res.json();
+
+    let data: unknown;
+    try {
+      data = await res.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Token server returned invalid JSON" },
+        { status: 502 }
+      );
+    }
     return NextResponse.json(data);
   } catch (err) {
     return NextResponse.json(
