@@ -2,10 +2,11 @@
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+import openai
 from openai import AsyncOpenAI
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 
@@ -25,7 +26,7 @@ engine = create_engine(
 class HankSession(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     room_name: str
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     ended_at: Optional[datetime] = None
     transcript_json: Optional[str] = None
     summary_json: Optional[str] = None
@@ -75,7 +76,7 @@ async def finalize_session(session_id: int, chat_history: list[dict]) -> None:
         row = db.get(HankSession, session_id)
         if row is None:
             return
-        row.ended_at = datetime.utcnow()
+        row.ended_at = lambda: datetime.now(timezone.utc)()
         row.transcript_json = transcript_str
         db.add(row)
         db.commit()
@@ -99,7 +100,7 @@ async def finalize_session(session_id: int, chat_history: list[dict]) -> None:
         )
         content = response.choices[0].message.content or "{}"
         summary = json.loads(content)
-    except Exception as e:
+    except (openai.APIError, json.JSONDecodeError) as e:
         summary = {
             "topics_covered": [],
             "key_steps_taught": [],

@@ -6,6 +6,8 @@ import secrets
 import uuid
 from pathlib import Path
 
+from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -43,7 +45,13 @@ def _verify_auth(request: Request) -> None:
     ):
         raise HTTPException(status_code=401, detail="Invalid or missing auth token")
 
-app = FastAPI(title="Hank Token Server")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="Hank Token Server", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -52,11 +60,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
 
 
 class TokenRequest(BaseModel):
