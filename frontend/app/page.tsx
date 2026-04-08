@@ -105,11 +105,6 @@ export default function Home() {
           message = "Hank's offline right now. Try again in a moment.";
         } else if (err.message.includes("400") || err.message.includes("422")) {
           message = "Couldn't start a session. Please refresh and try again.";
-        } else if (
-          err.message.toLowerCase().includes("network") ||
-          err.message.toLowerCase().includes("fetch")
-        ) {
-          message = "Couldn't reach Hank. Check your connection and try again.";
         }
       }
       setConnectionError(message);
