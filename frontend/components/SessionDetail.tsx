@@ -70,6 +70,7 @@ export function SessionDetail({
     }
 
     async function fetchDetail() {
+      controller.abort();
       controller = new AbortController();
       try {
         const res = await fetch(`/api/sessions/${sessionId}`, {
