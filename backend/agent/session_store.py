@@ -143,6 +143,55 @@ def get_resume_context(session_id: int) -> Optional[dict]:
         return json.loads(previous.summary_json)
 
 
+def _coerce_transcript_role(raw: object) -> Optional[str]:
+    """Map stored role strings (including str(ChatRole)) to user/assistant/system."""
+    if raw is None:
+        return None
+    s = str(raw).strip().lower()
+    if "." in s:
+        s = s.rsplit(".", 1)[-1]
+    if s in ("user", "assistant", "system"):
+        return s
+    if s == "developer":
+        return "system"
+    return None
+
+
+def get_resume_transcript(session_id: int) -> Optional[list[dict]]:
+    """Load the previous session's full transcript for replay into a new session.
+
+    Returns the parsed list of {role, content} message dicts from the previous
+    session pointed to by `resume_from_session_id`. Returns None if:
+    - The current session isn't a resume
+    - The previous session doesn't exist
+    - The previous session has no transcript yet
+    - The transcript JSON is corrupt
+    """
+    with Session(engine) as db:
+        current = db.get(HankSession, session_id)
+        if current is None or current.resume_from_session_id is None:
+            return None
+        previous = db.get(HankSession, current.resume_from_session_id)
+        if previous is None or previous.transcript_json is None:
+            return None
+        try:
+            history = json.loads(previous.transcript_json)
+            if not isinstance(history, list):
+                return None
+            valid: list[dict] = []
+            for msg in history:
+                if not isinstance(msg, dict):
+                    continue
+                role = _coerce_transcript_role(msg.get("role"))
+                content = msg.get("content")
+                if role is None or not content:
+                    continue
+                valid.append({"role": role, "content": str(content)})
+            return valid if valid else None
+        except (json.JSONDecodeError, TypeError):
+            return None
+
+
 async def finalize_session(session_id: int, chat_history: list[dict]) -> None:
     """Save transcript, generate summary via gpt-4.1-mini, persist both."""
     transcript_str = json.dumps(chat_history)
