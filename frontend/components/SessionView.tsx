@@ -13,19 +13,22 @@ import {
   useRoomContext,
   useVoiceAssistant,
 } from "@livekit/components-react";
-import { Mic, MicOff, PhoneOff } from "lucide-react";
+import { ImageUp, Loader2, Mic, MicOff, PhoneOff } from "lucide-react";
 import { useTranscriptHistory } from "../hooks/useTranscriptHistory";
+import { ImageUploadModal } from "./ImageUploadModal";
 import { Transcript } from "./Transcript";
 import { Visualizer } from "./Visualizer";
 
 type ActiveTab = "HANK" | "TRANSCRIPT";
 
 type Props = {
+  sessionId: number;
   initialMessage?: string;
   onUnexpectedDisconnect?: (message: string) => void;
 };
 
 export function SessionView({
+  sessionId,
   initialMessage,
   onUnexpectedDisconnect,
 }: Props) {
@@ -98,6 +101,90 @@ export function SessionView({
     };
   }, [connectionState, initialMessage, room, preseedRetry]);
 
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [imageUploadBusy, setImageUploadBusy] = useState(false);
+
+  async function publishImagePayload(payload: object) {
+    const encoded = new TextEncoder().encode(JSON.stringify(payload));
+    await room.localParticipant.publishData(encoded, {
+      reliable: true,
+      topic: "image",
+    });
+  }
+
+  async function openUploadModal() {
+    if (
+      connectionState !== ConnectionState.Connected ||
+      uploadModalOpen ||
+      imageUploadBusy
+    ) {
+      return;
+    }
+    try {
+      await publishImagePayload({ type: "image_pending" });
+      setUploadModalOpen(true);
+    } catch {
+      /* keep modal closed if signaling fails */
+    }
+  }
+
+  async function dismissUploadModal() {
+    if (imageUploadBusy) return;
+    try {
+      await publishImagePayload({ type: "image_cancelled" });
+    } catch {
+      /* still close UI */
+    }
+    setUploadModalOpen(false);
+  }
+
+  async function sendSessionImage(file: File) {
+    setImageUploadBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch(`/api/sessions/${sessionId}/images`, {
+        method: "POST",
+        body: fd,
+      });
+      const text = await res.text();
+      let body: {
+        image_id?: string;
+        path?: string;
+        detail?: unknown;
+        error?: unknown;
+      };
+      try {
+        body = text ? (JSON.parse(text) as typeof body) : {};
+      } catch {
+        throw new Error("Invalid server response");
+      }
+      if (!res.ok) {
+        const detail =
+          typeof body.detail === "string"
+            ? body.detail
+            : typeof body.error === "string"
+              ? body.error
+              : `Upload failed (${res.status})`;
+        throw new Error(detail);
+      }
+      if (
+        typeof body.image_id !== "string" ||
+        typeof body.path !== "string"
+      ) {
+        throw new Error("Invalid upload response");
+      }
+      await publishImagePayload({
+        type: "image_uploaded",
+        image_id: body.image_id,
+        path: body.path,
+      });
+      setUploadModalOpen(false);
+    } finally {
+      setImageUploadBusy(false);
+    }
+  }
+
   const [activeTab, setActiveTab] = useState<ActiveTab>("HANK");
 
   const vizActive = state === "listening" || state === "speaking";
@@ -118,6 +205,12 @@ export function SessionView({
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <ImageUploadModal
+        open={uploadModalOpen}
+        uploading={imageUploadBusy}
+        onDismiss={dismissUploadModal}
+        onSend={sendSessionImage}
+      />
       <header className="h-14 border-b border-[#262626] flex items-center justify-between px-4 bg-[#0a0a0a] shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-3.5 h-3.5 bg-amber-500" />
@@ -193,6 +286,23 @@ export function SessionView({
       </main>
 
       <footer className="h-32 flex items-center justify-center gap-8 bg-[#0a0a0a] shrink-0">
+        <button
+          type="button"
+          onClick={() => void openUploadModal()}
+          disabled={
+            connectionState !== ConnectionState.Connected ||
+            uploadModalOpen ||
+            imageUploadBusy
+          }
+          className="w-14 h-14 rounded-full flex items-center justify-center transition-all border border-[#404040] text-neutral-200 disabled:opacity-40 disabled:pointer-events-none hover:border-amber-500/50 hover:text-amber-500"
+          aria-label="Share a photo"
+        >
+          {imageUploadBusy ? (
+            <Loader2 className="w-6 h-6 animate-spin" aria-hidden />
+          ) : (
+            <ImageUp className="w-6 h-6" />
+          )}
+        </button>
         <button
           type="button"
           onClick={toggleMic}

@@ -11,6 +11,7 @@ type View = "welcome" | "active" | "session-detail";
 type Connection = {
   token: string;
   serverUrl: string;
+  sessionId: number;
 };
 
 type TokenResponse = {
@@ -95,6 +96,7 @@ export default function Home() {
       setConnection({
         token: data.token,
         serverUrl: data.url,
+        sessionId: data.session_id,
       });
       setViewingSessionId(null);
       setView("active");
@@ -177,6 +179,7 @@ export default function Home() {
             <TutorRoom
               token={connection.token}
               serverUrl={connection.serverUrl}
+              sessionId={connection.sessionId}
               initialMessage={initialMessage}
               onEnd={handleSessionEnd}
               onUnexpectedDisconnect={handleUnexpectedDisconnect}
