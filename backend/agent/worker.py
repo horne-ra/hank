@@ -6,11 +6,14 @@ Run in console mode for terminal testing:
 Run in dev mode to connect to LiveKit Cloud (used by frontend):
     cd backend && uv run python -m agent.worker dev
 """
+import asyncio
+import json
 import logging
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from livekit import rtc
 from livekit.agents import AgentSession, JobContext, WorkerOptions, cli, llm
 from livekit.plugins import openai, silero
 from openai.types.beta.realtime.session import InputAudioTranscription
@@ -25,6 +28,7 @@ from agent.session_store import (
     init_db,
 )
 from agent.tutor import HankTutor
+from agent.vision import analyze_image
 
 # Repo root (parent of backend/) and backend/ — either location may hold .env
 _backend_dir = Path(__file__).resolve().parents[1]
@@ -70,6 +74,7 @@ def _resume_chat_ctx_from_transcript(messages: list[dict]) -> llm.ChatContext:
 
 async def entrypoint(ctx: JobContext):
     await ctx.connect()
+    loop = asyncio.get_running_loop()
 
     init_db()
     session_id = get_session_by_room(ctx.room.name) or create_session(ctx.room.name)
@@ -117,7 +122,95 @@ async def entrypoint(ctx: JobContext):
         ),
     )
 
+    pending_nudge_task: asyncio.Task | None = None
+    vision_task: asyncio.Task | None = None
+
+    async def nudge_after_delay() -> None:
+        try:
+            await asyncio.sleep(12)
+            await session.say(
+                "Still waiting on that image — want to send it, or just tell me what you're seeing?"
+            )
+        except asyncio.CancelledError:
+            return
+
+    async def acknowledge_image() -> None:
+        try:
+            await session.say("Got it — let me take a look.")
+        except Exception:
+            logging.exception("acknowledge_image failed")
+
+    async def process_image_and_reply(image_path: str) -> None:
+        try:
+            analysis = await analyze_image(image_path)
+        except Exception:
+            logging.exception("analyze_image failed")
+            try:
+                await session.say(
+                    "Hmm, I had trouble making out that photo — can you describe what you're seeing, or try another angle?"
+                )
+            except Exception:
+                logging.exception("recovery say after vision failure")
+            return
+        try:
+            # If the user spoke after the ack and Hank is mid-response when vision
+            # finishes, observe whether this interrupts or queues in practice.
+            await session.generate_reply(
+                instructions=(
+                    f"The user just shared a photo. Here's what's visible in it: {analysis}\n\n"
+                    "Incorporate this observation naturally into your next response. Do not "
+                    "read the description verbatim — talk about what you see as if you're "
+                    "looking at it with them. Then continue guiding them toward the next "
+                    "step of the fix."
+                )
+            )
+        except Exception:
+            logging.exception("generate_reply after image failed")
+
+    def on_data_received(packet: rtc.DataPacket) -> None:
+        nonlocal pending_nudge_task, vision_task
+        if packet.topic != "image":
+            return
+        if packet.participant is None:
+            return
+        try:
+            payload = json.loads(packet.data.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            logging.warning("Malformed image-topic data packet")
+            return
+
+        msg_type = payload.get("type")
+        if msg_type == "image_pending":
+            if pending_nudge_task and not pending_nudge_task.done():
+                pending_nudge_task.cancel()
+            pending_nudge_task = loop.create_task(nudge_after_delay())
+        elif msg_type == "image_cancelled":
+            if pending_nudge_task and not pending_nudge_task.done():
+                pending_nudge_task.cancel()
+        elif msg_type == "image_uploaded":
+            if pending_nudge_task and not pending_nudge_task.done():
+                pending_nudge_task.cancel()
+            image_path = payload.get("path")
+            if not image_path:
+                logging.warning("image_uploaded without path")
+                return
+            loop.create_task(acknowledge_image())
+            vision_task = loop.create_task(process_image_and_reply(str(image_path)))
+
     async def on_shutdown() -> None:
+        nonlocal pending_nudge_task, vision_task
+        for t in (pending_nudge_task, vision_task):
+            if t is not None and not t.done():
+                t.cancel()
+                try:
+                    await t
+                except asyncio.CancelledError:
+                    pass
+                except Exception:
+                    logging.exception("Error while awaiting cancelled image task")
+        pending_nudge_task = None
+        vision_task = None
+
         history: list[dict] = []
         try:
             for msg in session.history.messages():
@@ -137,6 +230,8 @@ async def entrypoint(ctx: JobContext):
         room=ctx.room,
         agent=agent,
     )
+
+    ctx.room.on("data_received", on_data_received)
 
     if resume_transcript:
         greeting_instructions = (
