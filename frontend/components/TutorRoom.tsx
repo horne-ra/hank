@@ -7,6 +7,7 @@ import { SessionView } from "./SessionView";
 type Props = {
   token: string;
   serverUrl: string;
+  sessionId: number;
   initialMessage?: string;
   onEnd: () => void;
   onUnexpectedDisconnect?: (message: string) => void;
@@ -15,6 +16,7 @@ type Props = {
 export function TutorRoom({
   token,
   serverUrl,
+  sessionId,
   initialMessage,
   onEnd,
   onUnexpectedDisconnect,
@@ -52,6 +54,7 @@ export function TutorRoom({
       className="h-dvh flex flex-col"
     >
       <SessionView
+        sessionId={sessionId}
         initialMessage={initialMessage}
         onUnexpectedDisconnect={onUnexpectedDisconnect}
       />
