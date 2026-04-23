@@ -84,6 +84,11 @@ def get_session_by_room(room_name: str) -> Optional[int]:
         return row.id if row else None
 
 
+def session_exists(session_id: int) -> bool:
+    with Session(engine) as db:
+        return db.get(HankSession, session_id) is not None
+
+
 def get_summary(session_id: int) -> Optional[dict]:
     with Session(engine) as db:
         row = db.get(HankSession, session_id)
